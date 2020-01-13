@@ -24,9 +24,15 @@ func TestPuzzle1(t *testing.T) {
 	}
 
 	for idx, tc := range tt {
-		result := puzzle1(tc.program)
+		result := puzzle1(tc.program, tc.program[1], tc.program[2])
 		if result != tc.expect {
 			t.Errorf("test %d: expected %d, got %d", idx+1, tc.expect, result)
 		}
 	}
+}
+
+func ExamplePuzzle2() {
+	fmt.Println(Puzzle2())
+
+	// Output: 3892
 }
