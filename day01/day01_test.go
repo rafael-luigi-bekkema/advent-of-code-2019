@@ -31,3 +31,28 @@ func ExamplePuzzle1() {
 
 	// Output: 3270717
 }
+
+func TestPuzzle2(t *testing.T) {
+	tt := []struct {
+		masses []string
+		expect int
+	}{
+		{[]string{"14"}, 2},
+		{[]string{"1969"}, 966},
+		{[]string{"100756"}, 50346},
+		{[]string{"100756", "1969"}, 966 + 50346},
+	}
+
+	for idx, tc := range tt {
+		res := puzzle2(tc.masses)
+		if res != tc.expect {
+			t.Fatalf("test %d: expected %d, go %d", idx+1, tc.expect, res)
+		}
+	}
+}
+
+func ExamplePuzzle2() {
+	fmt.Println(Puzzle2())
+
+	// Output: 4903193
+}
