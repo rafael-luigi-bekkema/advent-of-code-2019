@@ -26,3 +26,26 @@ func ExamplePuzzle1() {
 
 	// Output: 314247
 }
+
+func TestPuzzle2(t *testing.T) {
+	tt := []struct {
+		orbits []string
+		expect int
+	}{
+		{[]string{"COM)B", "B)C", "C)D", "D)E", "E)F", "B)G", "G)H",
+			"D)I", "E)J", "J)K", "K)L", "K)YOU", "I)SAN"}, 4},
+	}
+
+	for idx, tc := range tt {
+		result := puzzle2(tc.orbits)
+		if result != tc.expect {
+			t.Errorf("test %d: expect %d, got %d", idx+1, tc.expect, result)
+		}
+	}
+}
+
+func ExamplePuzzle2() {
+	fmt.Println(Puzzle2())
+
+	// Output: 514
+}
