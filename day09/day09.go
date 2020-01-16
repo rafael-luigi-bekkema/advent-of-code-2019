@@ -136,11 +136,11 @@ For:
 	close(output)
 }
 
-func puzzle1(data []int64) []int64 {
+func puzzle1(data []int64, firstInput int64) []int64 {
 	input := make(chan int64)
 	output := make(chan int64)
 	go intcodeComp(data, input, output)
-	input <- 1
+	input <- firstInput
 	result := make([]int64, 0, 1)
 	for val := range output {
 		result = append(result, val)
@@ -150,5 +150,10 @@ func puzzle1(data []int64) []int64 {
 
 func Puzzle1() []int64 {
 	data := parseInput(utils.ReadAll("./input"))
-	return puzzle1(data)
+	return puzzle1(data, 1)
+}
+
+func Puzzle2() []int64 {
+	data := parseInput(utils.ReadAll("./input"))
+	return puzzle1(data, 2)
 }

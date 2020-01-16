@@ -34,3 +34,9 @@ func ExamplePuzzle1() {
 
 	// Output: [2775723069]
 }
+
+func ExamplePuzzle2() {
+	fmt.Println(Puzzle2())
+
+	// Output: [49115]
+}
