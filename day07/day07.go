@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func parseInput(input string) []int {
@@ -48,13 +49,11 @@ func permutations(arr []int) [][]int {
 	return res
 }
 
-func intcodeComp(init []int, inputs []int) []int {
+func intcodeComp(init []int, input <-chan int, output chan<- int) {
 	pos := 0
 
 	memory := make([]int, len(init))
 	copy(memory, init)
-
-	result := make([]int, 0, 1)
 
 For:
 	for {
@@ -91,13 +90,11 @@ For:
 			pos += 4
 		case 3:
 			//Input
-			inpVal := inputs[0]
-			memory[memory[pos+1]] = inpVal
-			inputs = inputs[1:]
+			memory[memory[pos+1]] = <-input
 			pos += 2
 		case 4:
 			//Output
-			result = append(result, getVal(1))
+			output <- getVal(1)
 			pos += 2
 		case 5:
 			if getVal(1) != 0 {
@@ -132,16 +129,19 @@ For:
 			log.Panicf("Op code not recognized: %d", opcode)
 		}
 	}
-
-	return result
 }
 
 func puzzle1(init []int) int {
 	outputSignal := 0
+	inpChan := make(chan int, 2)
+	outChan := make(chan int, 1)
 	for idx, phaseSettings := range permutations([]int{0, 1, 2, 3, 4}) {
 		input := 0
 		for _, phaseSetting := range phaseSettings {
-			input = intcodeComp(init, []int{phaseSetting, input})[0]
+			inpChan <- phaseSetting
+			inpChan <- input
+			intcodeComp(init, inpChan, outChan)
+			input = <-outChan
 		}
 		if idx == 0 || input > outputSignal {
 			outputSignal = input
@@ -152,4 +152,56 @@ func puzzle1(init []int) int {
 
 func Puzzle1() int {
 	return puzzle1(parseInput(utils.ReadAll("./input")))
+}
+
+type amp struct {
+	input  chan int
+	output chan int
+}
+
+func puzzle2(init []int) int {
+	var mutex sync.Mutex
+	outputSignal := 0
+	for _, phaseSettings := range permutations([]int{5, 6, 7, 8, 9}) {
+		running := 5
+		amps := make([]*amp, 5)
+		// Start up each Amp and give it the phaseSetting as input
+		for idx, phaseSetting := range phaseSettings {
+			amp := &amp{
+				input:  make(chan int),
+				output: make(chan int),
+			}
+			amps[idx] = amp
+			go func() {
+				intcodeComp(init, amp.input, amp.output)
+				mutex.Lock()
+				running--
+				mutex.Unlock()
+			}()
+			amp.input <- phaseSetting
+		}
+
+		// Loop until the amps quit
+		input := 0
+	Outer:
+		for {
+			for _, amp := range amps {
+				amp.input <- input
+				input = <-amp.output
+
+				if outputSignal == 0 || input > outputSignal {
+					outputSignal = input
+				}
+
+				if running == 0 {
+					break Outer
+				}
+			}
+		}
+	}
+	return outputSignal
+}
+
+func Puzzle2() int {
+	return puzzle2(parseInput(utils.ReadAll("./input")))
 }
