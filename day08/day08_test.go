@@ -28,3 +28,15 @@ func ExamplePuzzle1() {
 
 	// Output: 1584
 }
+
+func ExamplePuzzle2() {
+	layerPrinter(Puzzle2(), 25, false)
+
+	// Output:
+	//X__X__XX___XX__XXXX__XX__
+	//X_X__X__X_X__X_X____X__X_
+	//XX___X____X____XXX__X____
+	//X_X__X____X_XX_X____X____
+	//X_X__X__X_X__X_X____X__X_
+	//X__X__XX___XXX_XXXX__XX__
+}
