@@ -146,7 +146,7 @@ type coord struct {
 	x, y int
 }
 
-func puzzle1(data []int64) int {
+func paintHull(data []int64, puzzle int, paint bool) int {
 	panels := make(map[coord]int64)
 	pos := coord{0, 0}
 	input, output := make(chan int64), make(chan int64)
@@ -156,6 +156,12 @@ func puzzle1(data []int64) int {
 		done <- true
 	}()
 	direction := 0 // 0 = up, 1 = right, 2 = down, 3 = left
+
+	if puzzle == 2 {
+		panels[pos] = 1 // Start with white panel
+	}
+
+	var minX, maxX, minY, maxY int
 
 Outer:
 	for {
@@ -167,6 +173,19 @@ Outer:
 
 		color := <-output
 		panels[pos] = color
+
+		if pos.x > maxX {
+			maxX = pos.x
+		}
+		if pos.x < minX {
+			minX = pos.x
+		}
+		if pos.y > maxY {
+			maxY = pos.y
+		}
+		if pos.y < minY {
+			minY = pos.y
+		}
 
 		turn := <-output
 		if turn == 0 {
@@ -187,10 +206,29 @@ Outer:
 		}
 	}
 
+	if puzzle == 2 && paint {
+		for y := minY; y <= maxY; y++ {
+			for x := minX; x <= maxX; x++ {
+				if panels[coord{x, y}] == 0 {
+					utils.Print(utils.Black, " ")
+				} else {
+					utils.Print(utils.White, " ")
+				}
+			}
+			fmt.Print("\n")
+		}
+		fmt.Print("\n")
+	}
+
 	return len(panels)
 }
 
 func Puzzle1() int {
 	data := parseInput(utils.ReadAll("./input"))
-	return puzzle1(data)
+	return paintHull(data, 1, false)
+}
+
+func Puzzle2(paint bool) int {
+	data := parseInput(utils.ReadAll("./input"))
+	return paintHull(data, 2, paint)
 }

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -45,4 +46,13 @@ func ReadAll(file string) string {
 		panic(err)
 	}
 	return strings.TrimSpace(string(data))
+}
+
+var (
+	Black = "\033[1;40m%s\033[0m"
+	White = "\033[1;47m%s\033[0m"
+)
+
+func Print(color string, a ...interface{}) {
+	fmt.Print(fmt.Sprintf(color, a...))
 }
