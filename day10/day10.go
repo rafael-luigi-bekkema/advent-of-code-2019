@@ -4,6 +4,7 @@ import (
 	"aoc/utils"
 	"fmt"
 	"math"
+	"sort"
 )
 
 type Coord struct {
@@ -27,8 +28,12 @@ func (a *Asteroids) coord(idx int) Coord {
 	return Coord{idx % a.width, idx / a.width}
 }
 
+func (a *Asteroids) idx(c Coord) int {
+	return c.y*a.width + c.x
+}
+
 // blocked determines if line of sight between two coords is blocked by another coord
-func blocked(begin, end Coord, a *Asteroids) bool {
+func (a *Asteroids) blocked(begin, end Coord) bool {
 	// If coords are on the same line
 	// check that line for blocks
 	if begin.y == end.y {
@@ -67,7 +72,7 @@ func blocked(begin, end Coord, a *Asteroids) bool {
 	return false
 }
 
-func puzzle1(data []string) (Coord, int) {
+func puzzle1(data []string) (Coord, int, *Asteroids) {
 	width := len(data[0])
 	height := len(data)
 	roids := &Asteroids{
@@ -97,7 +102,7 @@ func puzzle1(data []string) (Coord, int) {
 				continue
 			}
 
-			if !blocked(roids.coord(aid), roids.coord(subidx), roids) {
+			if !roids.blocked(roids.coord(aid), roids.coord(subidx)) {
 				sighted[aid]++
 			}
 		}
@@ -113,10 +118,94 @@ func puzzle1(data []string) (Coord, int) {
 
 	_ = maxid
 
-	return roids.coord(maxid), maxcount
+	return roids.coord(maxid), maxcount, roids
+}
+
+func puzzle2(data []string) int {
+	station, _, roids := puzzle1(data)
+	stationIdx := station.y*roids.width + station.x
+
+	type ang struct {
+		c     Coord
+		angle float64
+	}
+
+	roidCount := 0
+	for _, a := range roids.data {
+		if a {
+			roidCount++
+		}
+	}
+
+	blasted := 0
+
+	for {
+		var angles []ang
+		newGrid := make([]bool, len(roids.data))
+		copy(newGrid, roids.data)
+		for idx, a := range roids.data {
+			if !a || idx == stationIdx {
+				continue
+			}
+
+			c := roids.coord(idx)
+			if !roids.blocked(station, c) {
+				var opposite, adjacent, offset int
+				if c.x >= station.x && station.y > c.y {
+					opposite = c.x - station.x
+					adjacent = station.y - c.y
+				} else if c.x > station.x && station.y <= c.y {
+					opposite = c.y - station.y
+					adjacent = c.x - station.x
+					offset = 90
+				} else if c.x <= station.x && station.y < c.y {
+					opposite = station.x - c.x
+					adjacent = c.y - station.y
+					offset = 180
+				} else { // c.x < station.x && station.y >= c.y
+					opposite = station.y - c.y
+					adjacent = station.x - c.x
+					offset = 270
+				}
+				rad := math.Atan2(float64(opposite), float64(adjacent))
+				deg := rad * (180 / math.Pi)
+				angle := float64(offset) + deg
+				angles = append(angles, ang{c, angle})
+			}
+		}
+
+		sort.Slice(angles, func(i, j int) bool {
+			return angles[i].angle < angles[j].angle
+		})
+
+		for _, angle := range angles {
+			newGrid[roids.idx(angle.c)] = false
+			blasted++
+			if blasted == 200 {
+				//fmt.Printf("====> Pew %03d: vaporized %v\n", blasted, angle.c)
+				return angle.c.x*100 + angle.c.y
+			} else {
+				//fmt.Printf("Pew %03d: vaporized %v\n", blasted, angle.c)
+			}
+		}
+
+		if roidCount-blasted == 1 {
+			break
+		}
+
+		roids.data = newGrid
+	}
+
+	panic("no result found")
 }
 
 func Puzzle1() (Coord, int) {
 	data := utils.ReadLines("./input")
-	return puzzle1(data)
+	c, num, _ := puzzle1(data)
+	return c, num
+}
+
+func Puzzle2() int {
+	data := utils.ReadLines("./input")
+	return puzzle2(data)
 }
