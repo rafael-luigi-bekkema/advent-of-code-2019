@@ -42,16 +42,22 @@ For:
 				mode = value[idx]
 			}
 
+			var readPos int64
+
 			switch mode {
 			case '0': // Position mode
-				return memory[memory[pos+offset]]
+				readPos = memory[pos+offset]
 			case '1': // Immediate mode
-				return memory[pos+offset]
+				readPos = pos + offset
 			case '2': // Relative mode
-				return memory[relBase+memory[pos+offset]]
+				readPos = relBase + memory[pos+offset]
 			default:
 				panic(fmt.Sprintf("unknown mode: %q in op: %q", mode, value))
 			}
+			if readPos >= int64(len(memory)) {
+				return 0
+			}
+			return memory[readPos]
 		}
 
 		setVal := func(offset int64, newVal int64) {
