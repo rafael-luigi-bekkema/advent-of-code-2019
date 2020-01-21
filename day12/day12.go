@@ -82,13 +82,6 @@ func diff(a, b int) int {
 	return 0
 }
 
-func printMoons(count int, moons []*Moon) {
-	fmt.Printf("Loop %d\n", count)
-	for _, moon := range moons {
-		fmt.Println(moon)
-	}
-}
-
 func puzzle1(data []string, steps int) int {
 	moons := make([]*Moon, len(data))
 	for idx, item := range data {
@@ -96,8 +89,6 @@ func puzzle1(data []string, steps int) int {
 		_, _ = fmt.Sscanf(item, "<x=%d, y=%d, z=%d>", &moon.pos.x, &moon.pos.y, &moon.pos.z)
 		moons[idx] = &moon
 	}
-
-	printMoons(0, moons)
 
 	for i := 0; i < steps; i++ {
 		// Adjust velocities
