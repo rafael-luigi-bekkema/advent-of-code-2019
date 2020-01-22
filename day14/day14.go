@@ -21,20 +21,20 @@ func fromString(s string) res {
 type out struct {
 	qty       uint
 	rs        []res
-	leftovers uint
+	stockpile uint
 }
 
 func oreCalc(name string, qty uint, rcns map[string]*out) uint {
 	r := rcns[name]
 	var count uint
 
-	// Take from leftovers
-	if r.leftovers > 0 {
-		if qty > r.leftovers {
-			qty -= r.leftovers
-			r.leftovers = 0
+	// Take from stockpile
+	if r.stockpile > 0 {
+		if qty > r.stockpile {
+			qty -= r.stockpile
+			r.stockpile = 0
 		} else {
-			r.leftovers -= qty
+			r.stockpile -= qty
 			return count
 		}
 	}
@@ -44,7 +44,7 @@ func oreCalc(name string, qty uint, rcns map[string]*out) uint {
 		mul = uint(math.Ceil(float64(qty) / float64(r.qty)))
 	}
 
-	r.leftovers += mul*r.qty - qty
+	r.stockpile += mul*r.qty - qty
 
 	for _, inpr := range r.rs {
 		if inpr.name == "ORE" {
@@ -56,7 +56,7 @@ func oreCalc(name string, qty uint, rcns map[string]*out) uint {
 	return count
 }
 
-func puzzle1(data []string) uint {
+func parseData(data []string) map[string]*out {
 	rcns := make(map[string]*out)
 
 	// Parse data into map
@@ -74,6 +74,11 @@ func puzzle1(data []string) uint {
 		rcns[outRes.name] = &o
 	}
 
+	return rcns
+}
+
+func puzzle1(data []string) uint {
+	rcns := parseData(data)
 	count := oreCalc("FUEL", 1, rcns)
 	return count
 }
@@ -81,4 +86,33 @@ func puzzle1(data []string) uint {
 func Puzzle1() uint {
 	data := utils.ReadLines("./input")
 	return puzzle1(data)
+}
+
+func puzzle2(data []string) uint {
+	rcns := parseData(data)
+
+	var ore uint = 1000000000000
+	var fuel uint
+
+	orePerFuel := puzzle1(data)
+
+	for ore > 0 {
+		qty := ore / orePerFuel
+		if qty == 0 {
+			break
+		}
+		c := oreCalc("FUEL", qty, rcns)
+		if c >= ore {
+			panic("too much ore used")
+		}
+		ore -= c
+		fuel += qty
+	}
+
+	return fuel
+}
+
+func Puzzle2() uint {
+	data := utils.ReadLines("./input")
+	return puzzle2(data)
 }
