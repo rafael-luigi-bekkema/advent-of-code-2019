@@ -3,5 +3,5 @@ package main
 import "aoc/day15"
 
 func main() {
-	day15.Puzzle1()
+	day15.Puzzle2()
 }

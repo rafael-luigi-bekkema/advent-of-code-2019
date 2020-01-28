@@ -3,10 +3,7 @@ package day15
 import (
 	"aoc/intcode"
 	"aoc/utils"
-	"bufio"
 	"fmt"
-	"os"
-	"time"
 )
 
 type coord struct {
@@ -82,34 +79,14 @@ func render(theMap map[coord]*space, current coord) {
 		}
 	}
 
-	fmt.Print("\n---\n")
+	fmt.Printf("\n")
+	fmt.Printf("---\n")
 }
 
 type space struct {
-	id    int
-	moves [4]bool
-}
-
-func manualMove() int64 {
-	reader := bufio.NewReader(os.Stdin)
-	var move int64
-
-	fmt.Print("Move (j/k/l/i): ")
-	text, _ := reader.ReadString('\n')
-	switch text {
-	case "j\n": // left
-		move = 2
-	case "k\n": // down
-		move = 1
-	case "l\n": // right
-		move = 3
-	case "i\n": // up
-		move = 0
-	default:
-		move = 3
-	}
-
-	return move
+	id        int
+	moves     [4]bool
+	moveCount int
 }
 
 func autoMove(lastMove int64, pos coord, theMap map[coord]*space) int64 {
@@ -166,6 +143,7 @@ Outer:
 		curr.id = Empty
 
 		move = autoMove(move, pos, theMap)
+		//move = manualMove()
 
 		input <- move + 1
 		curr.moves[move] = true
@@ -179,29 +157,176 @@ Outer:
 			newCurr = &space{}
 			theMap[newPos] = newCurr
 		}
+		if status == 1 || status == 2 {
+			if newCurr.id == 0 {
+				moves++
+				newCurr.moveCount = moves
+			} else {
+				moves = newCurr.moveCount
+			}
+		}
 		switch status {
 		case 0: // wall
 			newCurr.id = Wall
-			render(theMap, pos)
+			//render(theMap, pos)
 		case 1: // move success
 			newCurr.id = Empty
 			pos = newPos
-			moves++
-			render(theMap, pos)
+			//render(theMap, pos)
 		case 2: // oxygen system reached
 			newCurr.id = System
-			moves++
-			render(theMap, pos)
+			//render(theMap, pos)
 			break Outer
 		}
-
-		time.Sleep(time.Millisecond * 10)
 	}
 
 	return moves
 }
 
-func Puzzle1() {
+type bot struct {
+	mapp          map[coord]*space
+	pos           coord
+	input, output chan int64
+	mode          int64
+	lastMove      int64
+}
+
+func (b *bot) unexploredMove(pos coord) int64 {
+	if b.mapp[coord{pos.x + 1, pos.y}] == nil {
+		return 3
+	}
+	if b.mapp[coord{pos.x - 1, pos.y}] == nil {
+		return 2
+	}
+	if b.mapp[coord{pos.x, pos.y + 1}] == nil {
+		return 1
+	}
+	if b.mapp[coord{pos.x, pos.y - 1}] == nil {
+		return 0
+	}
+	return -1
+}
+
+func (b *bot) emptyMove() int64 {
+	if b.mapp[coord{b.pos.x + 1, b.pos.y}].id == Empty && b.unexploredMove(b.pos.move(3)) != -1 {
+		return 3
+	}
+	if b.mapp[coord{b.pos.x - 1, b.pos.y}].id == Empty && b.unexploredMove(b.pos.move(2)) != -1 {
+		return 2
+	}
+	if b.mapp[coord{b.pos.x, b.pos.y + 1}].id == Empty && b.unexploredMove(b.pos.move(1)) != -1 {
+		return 1
+	}
+	if b.mapp[coord{b.pos.x, b.pos.y - 1}].id == Empty && b.unexploredMove(b.pos.move(0)) != -1 {
+		return 0
+	}
+	panic("no empty")
+}
+
+func (b *bot) closestUnexplored(pos, from coord, depth int) int {
+	for i := int64(0); i < 4; i++ {
+		newPos := pos.move(i)
+		if from == newPos {
+			continue
+		}
+		curr := b.mapp[newPos]
+		// Has unexplored edge so go here
+		if curr == nil {
+			return depth
+		}
+		if curr.id == Wall {
+			continue
+		}
+		if curr.id == Empty {
+			move := b.closestUnexplored(newPos, pos, depth+1)
+			if move != -1 {
+				return depth
+			}
+		}
+	}
+	return -1
+}
+
+func (b *bot) findUnexplored(pos coord) int64 {
+	var minDepth = -1
+	var minMove int64 = -1
+	for i := int64(0); i < 4; i++ {
+		newPos := pos.move(i)
+		curr := b.mapp[newPos]
+		if curr == nil {
+			return i
+		}
+		if curr.id != Wall {
+			depth := b.closestUnexplored(pos.move(i), pos, 0)
+			if depth == -1 {
+				continue
+			}
+			if minDepth == -1 || depth < minDepth {
+				minDepth = depth
+				minMove = i
+			}
+		}
+	}
+	return minMove
+}
+
+func (b *bot) autoMove() bool {
+	move := b.findUnexplored(b.pos)
+	if move == -1 {
+		return true
+	}
+	b.move(move)
+	return false
+}
+
+func (b *bot) move(move int64) int64 {
+	b.input <- move + 1
+	response := <-b.output
+	newPos := b.pos.move(move)
+	newCurr, ok := b.mapp[newPos]
+	if !ok {
+		newCurr = &space{}
+		b.mapp[newPos] = newCurr
+	}
+	switch response {
+	case 0:
+		b.mapp[newPos].id = Wall
+	case 1:
+		b.mapp[newPos].id = Empty
+		b.pos = newPos
+	case 2:
+		b.mapp[newPos].id = System
+		b.pos = newPos
+	}
+	return response
+}
+
+func puzzle2(init []int64) {
+	input, output := make(chan int64), make(chan int64)
+
+	go intcode.IntcodeComp(init, input, output)
+
+	theMap := make(map[coord]*space)
+
+	// move: north (0), south (1), west (2), and east (3)
+	// move: up (0), down (1), left (2), and right (3)
+	b := &bot{mapp: theMap, input: input, output: output}
+	b.mapp[coord{}] = &space{id: Empty}
+
+	for {
+		if b.autoMove() {
+			render(b.mapp, b.pos)
+			break
+		}
+	}
+}
+
+func Puzzle1() int {
 	data := intcode.ParseInput(utils.ReadAll("./input"))
-	puzzle1(data)
+	return puzzle1(data)
+}
+
+func Puzzle2() {
+	data := intcode.ParseInput(utils.ReadAll("./input"))
+	puzzle2(data)
 }
