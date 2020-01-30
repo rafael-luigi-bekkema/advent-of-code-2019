@@ -49,7 +49,7 @@ func permutations(arr []int) [][]int {
 	return res
 }
 
-func intcodeComp(init []int, input <-chan int, output chan<- int) {
+func intcodeComp(init []int, input <-chan int, output chan<- int, ready chan<- bool) {
 	pos := 0
 
 	memory := make([]int, len(init))
@@ -90,6 +90,7 @@ For:
 			pos += 4
 		case 3:
 			//Input
+			ready <- true
 			memory[memory[pos+1]] = <-input
 			pos += 2
 		case 4:
@@ -124,6 +125,7 @@ For:
 			pos += 4
 		case 99:
 			// Done
+			ready <- false
 			break For
 		default:
 			log.Panicf("Op code not recognized: %d", opcode)
@@ -135,12 +137,17 @@ func puzzle1(init []int) int {
 	outputSignal := 0
 	inpChan := make(chan int, 2)
 	outChan := make(chan int, 1)
+	ready := make(chan bool)
+	go func() {
+		for range ready {
+		}
+	}()
 	for idx, phaseSettings := range permutations([]int{0, 1, 2, 3, 4}) {
 		input := 0
 		for _, phaseSetting := range phaseSettings {
 			inpChan <- phaseSetting
 			inpChan <- input
-			intcodeComp(init, inpChan, outChan)
+			intcodeComp(init, inpChan, outChan, ready)
 			input = <-outChan
 		}
 		if idx == 0 || input > outputSignal {
@@ -157,6 +164,7 @@ func Puzzle1() int {
 type amp struct {
 	input  chan int
 	output chan int
+	ready  chan bool
 }
 
 func puzzle2(init []int) int {
@@ -170,14 +178,16 @@ func puzzle2(init []int) int {
 			amp := &amp{
 				input:  make(chan int),
 				output: make(chan int),
+				ready:  make(chan bool),
 			}
 			amps[idx] = amp
 			go func() {
-				intcodeComp(init, amp.input, amp.output)
+				intcodeComp(init, amp.input, amp.output, amp.ready)
 				mutex.Lock()
 				running--
 				mutex.Unlock()
 			}()
+			<-amp.ready
 			amp.input <- phaseSetting
 		}
 
@@ -186,15 +196,16 @@ func puzzle2(init []int) int {
 	Outer:
 		for {
 			for _, amp := range amps {
+				ready := <-amp.ready
+				if !ready {
+					break Outer
+				}
+
 				amp.input <- input
 				input = <-amp.output
 
 				if outputSignal == 0 || input > outputSignal {
 					outputSignal = input
-				}
-
-				if running == 0 {
-					break Outer
 				}
 			}
 		}
