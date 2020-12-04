@@ -1,9 +1,10 @@
 package main
 
 import (
-	"aoc/day07"
+	"aoc/day18"
+	"fmt"
 )
 
 func main() {
-	day07.Puzzle2()
+	fmt.Printf("Value: %d\n", day18.Puzzle1())
 }
